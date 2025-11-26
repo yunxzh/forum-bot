@@ -2,13 +2,19 @@ Flask==3.0.0
 Flask-CORS==4.0.0
 Flask-JWT-Extended==4.6.0
 requests==2.31.0
+# ⭐ WebDriver 相关
 undetected-chromedriver==3.5.5
 selenium==4.16.0
+# AI
 openai==1.6.1
+# 数据库
 aiosqlite==0.19.0
+# 调度器
 APScheduler==3.10.4
+# 解析
 beautifulsoup4==4.12.2
 lxml==5.0.0
+# 其他
 python-dotenv==1.0.0
 cryptography==41.0.7
 bcrypt==4.1.2
