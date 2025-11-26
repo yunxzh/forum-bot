@@ -7,58 +7,57 @@ WORKDIR /app
 # 设置环境变量
 ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
-    DISPLAY=:99 \
     PYTHONPATH=/app
 
-# ==================== 安装系统依赖和 Chrome ====================
-RUN apt-get update && apt-get install -y \
-    # 基础工具
+# ==================== 安装基础工具 ====================
+RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     curl \
-    gnupg \
-    unzip \
+    gnupg2 \
+    ca-certificates \
+    apt-transport-https \
+    && rm -rf /var/lib/apt/lists/*
+
+# ==================== 添加 Google Chrome 源并安装 ====================
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
+
+# ==================== 安装所有依赖 ====================
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    google-chrome-stable \
     supervisor \
     nginx \
     sqlite3 \
-    # Chrome 依赖包
+    unzip \
     fonts-liberation \
-    libappindicator3-1 \
     libasound2 \
     libatk-bridge2.0-0 \
     libatk1.0-0 \
+    libatspi2.0-0 \
     libcups2 \
     libdbus-1-3 \
-    libgdk-pixbuf2.0-0 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
     libnspr4 \
     libnss3 \
-    libx11-xcb1 \
+    libwayland-client0 \
     libxcomposite1 \
     libxdamage1 \
+    libxfixes3 \
+    libxkbcommon0 \
     libxrandr2 \
     xdg-utils \
-    libgbm1 \
-    libxss1 \
-    libxtst6 \
-    ca-certificates \
-    # 中文字体
-    fonts-wqy-zenhei \
-    fonts-wqy-microhei \
-    && rm -rf /var/lib/apt/lists/*
-
-# ==================== 安装 Google Chrome ====================
-RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
-    && apt-get update \
-    && apt-get install -y google-chrome-stable \
+    libu2f-udev \
+    libvulkan1 \
     && rm -rf /var/lib/apt/lists/*
 
 # ==================== 验证 Chrome 安装 ====================
 RUN google-chrome --version && echo "✅ Chrome 安装成功"
 
-# ==================== 复制并安装 Python 依赖 ====================
-# ⭐ 修复：使用正确的路径
-COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+# ==================== 安装 Python 依赖 ====================
+COPY backend/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
 # ==================== 复制项目文件 ====================
 COPY . .
