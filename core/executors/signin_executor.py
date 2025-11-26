@@ -32,10 +32,10 @@ class SignInExecutor:
                 proxy=self.site.http_proxy
             )
             
-            self.browser.start()
+            # 删除 self.browser.start()，因为 undetected-chromedriver 初始化时已启动
             
-            # 导航到站点
-            self.browser.navigate(self.site.base_url)
+            # 导航到站点 (修正方法名为 navigate_to)
+            self.browser.navigate_to(self.site.base_url)
             time.sleep(2)
             
             # 加载Cookie或登录
@@ -50,7 +50,7 @@ class SignInExecutor:
                 return False, "登录失败", details
             
             # 刷新页面确保Cookie生效
-            self.browser.navigate(self.site.base_url)
+            self.browser.navigate_to(self.site.base_url)
             time.sleep(2)
             
             # 执行签到
@@ -59,27 +59,34 @@ class SignInExecutor:
                 return False, "未配置签到按钮选择器", details
             
             # 查找签到按钮
-            signin_button = self.browser.find_element(signin_selector)
+            # 注意：如果 BrowserManager 没有 find_element 方法，请使用 self.browser.driver.find_element(...)
+            # 这里假设 BrowserManager 已封装或使用 driver 的 wait_for_element
+            from selenium.webdriver.common.by import By
+            signin_button = self.browser.wait_for_element(By.CSS_SELECTOR, signin_selector)
+            
             if not signin_button:
                 # 可能已经签到过了
                 details['already_signed'] = True
                 return True, "今日已签到或未找到签到按钮", details
             
             # 点击签到按钮
-            if self.browser.click(signin_selector):
+            try:
+                signin_button.click()
                 time.sleep(2)
                 
                 # 检查是否需要确认
                 confirm_selector = self.site.selectors.get('signin_confirm')
                 if confirm_selector:
-                    self.browser.click(confirm_selector)
-                    time.sleep(1)
+                    confirm_btn = self.browser.wait_for_element(By.CSS_SELECTOR, confirm_selector)
+                    if confirm_btn:
+                        confirm_btn.click()
+                        time.sleep(1)
                 
                 details['signed'] = True
                 logger.info(f"站点 {self.site.name} 签到成功")
                 return True, "签到成功", details
-            else:
-                return False, "点击签到按钮失败", details
+            except Exception as e:
+                return False, f"点击签到按钮失败: {e}", details
             
         except Exception as e:
             logger.error(f"签到执行失败: {e}")
@@ -112,27 +119,32 @@ class SignInExecutor:
     
     def _login_with_password(self) -> bool:
         """使用账号密码登录"""
+        from selenium.webdriver.common.by import By
         try:
             # 点击登录入口
             login_modal_selector = self.site.selectors.get('login_modal')
             if login_modal_selector:
-                self.browser.click(login_modal_selector)
+                ele = self.browser.wait_for_element(By.CSS_SELECTOR, login_modal_selector)
+                if ele: ele.click()
                 time.sleep(1)
             
             # 输入用户名
             username_selector = self.site.selectors.get('username_input')
             if username_selector:
-                self.browser.input_text(username_selector, self.site.username)
+                ele = self.browser.wait_for_element(By.CSS_SELECTOR, username_selector)
+                if ele: ele.send_keys(self.site.username)
             
             # 输入密码
             password_selector = self.site.selectors.get('password_input')
             if password_selector:
-                self.browser.input_text(password_selector, self.site.password)
+                ele = self.browser.wait_for_element(By.CSS_SELECTOR, password_selector)
+                if ele: ele.send_keys(self.site.password)
             
             # 点击登录按钮
             login_submit_selector = self.site.selectors.get('login_submit')
             if login_submit_selector:
-                self.browser.click(login_submit_selector)
+                ele = self.browser.wait_for_element(By.CSS_SELECTOR, login_submit_selector)
+                if ele: ele.click()
                 time.sleep(3)
             
             # 检查是否登录成功（可以根据页面变化判断）
