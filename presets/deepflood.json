@@ -6,7 +6,7 @@
   "selectors": {
     "signin_button": ".Button--uCheckIn",
     "signin_confirm": null,
-    "post_list_url": "/all",
+    "post_list_url": "https://feed.deepflood.com/topic.rss.xml",
     "post_item": "li[data-id]",
     "post_title": ".DiscussionListItem-title",
     "post_link": ".DiscussionListItem-main a",
