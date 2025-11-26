@@ -3,7 +3,6 @@ version: '3.8'
 services:
   forum-bot:
     image: ghcr.io/yunxzh/forum-bot:1.0.5
-    # 或使用: yesyunxin/forum-bot:1.0.5
     container_name: forum-bot
     restart: unless-stopped
     ports:
@@ -23,10 +22,6 @@ services:
       # 浏览器配置
       - HEADLESS=true
       - IN_DOCKER=true
-      
-      # 可选：代理配置
-      # - HTTP_PROXY=http://proxy.example.com:8080
-      # - HTTPS_PROXY=http://proxy.example.com:8080
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/api/health"]
       interval: 30s
