@@ -11,30 +11,49 @@ import base64
 import urllib.parse
 from typing import Optional
 from datetime import datetime
+import logging
 
-# 修复导入路径
 from backend.database.db import get_db
 from backend.models.notification import NotificationConfig
 
+logger = logging.getLogger(__name__)
+
 class NotificationService:
     def __init__(self):
-        self.config = self._load_config()
+        self.config = None  # 延迟加载
+        self._config_loaded = False
+    
+    def _ensure_config_loaded(self):
+        """确保配置已加载"""
+        if not self._config_loaded:
+            self.config = self._load_config()
+            self._config_loaded = True
     
     def _load_config(self) -> NotificationConfig:
         """加载通知配置"""
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT * FROM notification_config WHERE id = 1')
-            row = cursor.fetchone()
-            
-            if not row:
-                return NotificationConfig()
-            
-            config_json = json.loads(row['config_json'])
-            return NotificationConfig.from_dict(config_json)
+        try:
+            with get_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT * FROM notification_config WHERE id = 1')
+                row = cursor.fetchone()
+                
+                if not row:
+                    return NotificationConfig()
+                
+                config_json = json.loads(row['config_json'])
+                return NotificationConfig.from_dict(config_json)
+        except Exception as e:
+            logger.warning(f"加载通知配置失败: {e}，使用默认配置")
+            return NotificationConfig()
     
     def send(self, title: str, content: str):
         """发送通知到所有已启用的渠道"""
+        self._ensure_config_loaded()  # 确保配置已加载
+        
+        if not self.config:
+            logger.warning("通知配置未加载，跳过发送")
+            return {}
+        
         results = {}
         
         if self.config.tg_enabled:
@@ -88,7 +107,7 @@ class NotificationService:
             response = requests.post(url, json=payload, proxies=proxies, timeout=15)
             return response.status_code == 200
         except Exception as e:
-            print(f"Telegram通知发送失败: {e}")
+            logger.error(f"Telegram通知发送失败: {e}")
             return False
     
     def _send_wecom(self, title: str, content: str) -> bool:
@@ -105,7 +124,7 @@ class NotificationService:
             response = requests.post(url, json=data, timeout=15)
             return response.json().get('errcode') == 0
         except Exception as e:
-            print(f"企业微信通知发送失败: {e}")
+            logger.error(f"企业微信通知发送失败: {e}")
             return False
     
     def _send_pushplus(self, title: str, content: str) -> bool:
@@ -124,7 +143,7 @@ class NotificationService:
             response = requests.post(url, json=data, timeout=15)
             return response.json().get('code') == 200
         except Exception as e:
-            print(f"PushPlus通知发送失败: {e}")
+            logger.error(f"PushPlus通知发送失败: {e}")
             return False
     
     def _send_dingding(self, title: str, content: str) -> bool:
@@ -148,7 +167,7 @@ class NotificationService:
             response = requests.post(url, json=data, timeout=15)
             return response.json().get('errcode') == 0
         except Exception as e:
-            print(f"钉钉通知发送失败: {e}")
+            logger.error(f"钉钉通知发送失败: {e}")
             return False
     
     def _send_feishu(self, title: str, content: str) -> bool:
@@ -165,7 +184,7 @@ class NotificationService:
             response = requests.post(url, json=data, timeout=15)
             return response.json().get('code') == 0
         except Exception as e:
-            print(f"飞书通知发送失败: {e}")
+            logger.error(f"飞书通知发送失败: {e}")
             return False
     
     def _send_bark(self, title: str, content: str) -> bool:
@@ -186,7 +205,7 @@ class NotificationService:
             response = requests.get(url, params=params, timeout=15)
             return response.json().get('code') == 200
         except Exception as e:
-            print(f"Bark通知发送失败: {e}")
+            logger.error(f"Bark通知发送失败: {e}")
             return False
     
     def _send_smtp(self, title: str, content: str) -> bool:
@@ -218,7 +237,7 @@ class NotificationService:
             server.quit()
             return True
         except Exception as e:
-            print(f"SMTP通知发送失败: {e}")
+            logger.error(f"SMTP通知发送失败: {e}")
             return False
     
     def _send_gotify(self, title: str, content: str) -> bool:
@@ -236,11 +255,16 @@ class NotificationService:
             response = requests.post(url, json=data, timeout=15)
             return response.status_code == 200
         except Exception as e:
-            print(f"Gotify通知发送失败: {e}")
+            logger.error(f"Gotify通知发送失败: {e}")
             return False
 
     def is_any_enabled(self) -> bool:
         """检查是否有任何通知渠道被启用"""
+        self._ensure_config_loaded()  # 确保配置已加载
+        
+        if not self.config:
+            return False
+        
         return any([
             self.config.tg_enabled,
             self.config.wecom_enabled,
