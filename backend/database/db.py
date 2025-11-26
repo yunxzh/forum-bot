@@ -104,7 +104,8 @@ def init_db(db_path: str):
     conn.commit()
     
     # 创建默认管理员账户（如果不存在）
-    from models.user import User
+    # 修复：使用绝对导入路径
+    from backend.models.user import User
     cursor.execute('SELECT COUNT(*) FROM users')
     if cursor.fetchone()[0] == 0:
         default_password_hash = User.hash_password('admin123')
