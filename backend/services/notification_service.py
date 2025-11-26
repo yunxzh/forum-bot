@@ -12,8 +12,9 @@ import urllib.parse
 from typing import Optional
 from datetime import datetime
 
-from database.db import get_db
-from models.notification import NotificationConfig
+# 修复导入路径
+from backend.database.db import get_db
+from backend.models.notification import NotificationConfig
 
 class NotificationService:
     def __init__(self):
