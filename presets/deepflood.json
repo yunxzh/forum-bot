@@ -1,0 +1,22 @@
+// presets/deepflood.json
+{
+  "name": "DeepFlood",
+  "base_url": "https://www.deepflood.com",
+  "architecture": "Flarum",
+  "selectors": {
+    "signin_button": ".Button--uCheckIn",
+    "post_list_url": "/all",
+    "post_item": "li[data-id]",
+    "post_title": ".DiscussionListItem-title",
+    "post_link": ".DiscussionListItem-main a",
+    "detail_title": ".DiscussionHero-title",
+    "detail_content": ".Post-body",
+    "reply_dropdown": ".SplitDropdown-button",
+    "reply_textarea": "textarea.FormControl",
+    "reply_submit": ".item-submit button",
+    "login_modal": ".LogInModal-content",
+    "login_submit": ".LogInModal-footer .Button",
+    "username_input": "input[name=identification]",
+    "password_input": "input[name=password]"
+  }
+}
