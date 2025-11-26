@@ -5,9 +5,10 @@ from typing import Dict, Tuple
 import time
 import logging
 
+# 修复导入路径
 from core.browser.browser_manager import BrowserManager
 from core.browser.cookie_manager import CookieManager
-from models.site import Site
+from backend.models.site import Site
 
 logger = logging.getLogger(__name__)
 
