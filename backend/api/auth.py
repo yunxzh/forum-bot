@@ -6,8 +6,9 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from datetime import datetime
 import sqlite3
 
-from database.db import get_db
-from models.user import User
+# 修复导入路径
+from backend.database.db import get_db
+from backend.models.user import User
 
 bp = Blueprint('auth', __name__)
 
