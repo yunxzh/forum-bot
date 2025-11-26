@@ -20,9 +20,10 @@ WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
-    PYTHONPATH=/app
+    PYTHONPATH=/app \
+    TZ=Asia/Shanghai
 
-# ==================== 安装基础依赖 ====================
+# ==================== 安装基础依赖 (含时区数据) ====================
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
@@ -31,6 +32,9 @@ RUN apt-get update && apt-get install -y \
     supervisor \
     nginx \
     sqlite3 \
+    tzdata \
+    && ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && dpkg-reconfigure -f noninteractive tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # ==================== 添加 Chrome 源 ====================
@@ -57,8 +61,7 @@ COPY . .
 # ==================== 创建必要目录 ====================
 RUN mkdir -p /app/data /app/logs /app/frontend/dist
 
-# ==================== ⭐ 复制构建好的前端文件 ====================
-# 从第一阶段复制 dist 目录到最终镜像
+# ==================== 复制构建好的前端文件 ====================
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 
 # ==================== 复制配置文件 ====================
