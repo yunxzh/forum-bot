@@ -1,10 +1,11 @@
-// presets/deepflood.json
 {
   "name": "DeepFlood",
   "base_url": "https://www.deepflood.com",
   "architecture": "Flarum",
+  "description": "DeepFlood论坛预设配置",
   "selectors": {
     "signin_button": ".Button--uCheckIn",
+    "signin_confirm": null,
     "post_list_url": "/all",
     "post_item": "li[data-id]",
     "post_title": ".DiscussionListItem-title",
