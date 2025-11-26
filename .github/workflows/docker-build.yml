@@ -3,84 +3,84 @@ name: Build and Push Docker Images
 on:
   push:
     branches:
-      - aio
       - master
+      - main
     tags:
-      - 'v*'
+      - 'v*'  # 当推送如 v1.0.0 的标签时触发
   pull_request:
     branches:
-      - aio
       - master
+      - main
+  # 允许手动触发
   workflow_dispatch:
 
 env:
-  GHCR_REGISTRY: ghcr.io
-  DOCKERHUB_REGISTRY: docker.io
+  # 镜像名称，默认为 GitHub 仓库名 (例如: yunxzh/forum-bot)
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-all-in-one:
-    name: Build All-in-One Image
+  build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
-    
+      packages: write # 允许推送到 ghcr.io
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
-      
+
+      # 设置 QEMU (如果未来需要构建多架构镜像)
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-      
+
+      # 设置 Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      
+
+      # 登录到 Docker Hub
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
         if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
         with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Extract metadata
+
+      # 登录到 GitHub Container Registry
+      - name: Log in to the Container registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 提取元数据 (tags, labels)
+      # 这步会自动处理 latest 标签和版本号标签
+      - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ env.GHCR_REGISTRY }}/${{ env.IMAGE_NAME }}
-            ${{ env.DOCKERHUB_REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/forum-bot
+            ghcr.io/${{ env.IMAGE_NAME }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/forum-bot
           tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest,enable={{is_default_branch}}
-          labels: |
-            org.opencontainers.image.title=Forum-Bot
-            org.opencontainers.image.description=通用论坛自动化机器人平台
-            org.opencontainers.image.vendor=Forum-Bot
-      
-      - name: Build and push image
+
+      # 构建并推送
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
+          # 只构建 amd64，因为你的 Dockerfile 中 Chrome 依赖指定了 amd64
+          platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # 使用 GitHub Actions 缓存加速构建
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            BUILD_DATE=${{ steps.meta.outputs.created }}
-            VERSION=${{ steps.meta.outputs.version }}
