@@ -4,8 +4,9 @@
 from typing import List, Optional
 import json
 
-from database.db import get_db
-from models.site import Site
+# 修复导入路径
+from backend.database.db import get_db
+from backend.models.site import Site
 
 class SiteService:
     @staticmethod
