@@ -5,8 +5,9 @@ from typing import Optional
 from datetime import datetime
 import json
 
-from database.db import get_db
-from models.task import TaskLog
+# 修复导入路径
+from backend.database.db import get_db
+from backend.models.task import TaskLog
 
 class TaskService:
     @staticmethod
