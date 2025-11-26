@@ -1,83 +1,88 @@
-# ============================================
-# 阶段 1: 前端构建
-# ============================================
-FROM node:18-alpine AS frontend-builder
-
-WORKDIR /app/frontend
-
-COPY frontend/package*.json ./
-RUN npm install
-
-COPY frontend/ ./
-RUN npm run build
-
-# ============================================
-# 阶段 2: 最终镜像
-# ============================================
+# 基础镜像
 FROM python:3.9-slim
-
-# 安装系统依赖
-RUN apt-get update && apt-get install -y \
-    chromium \
-    chromium-driver \
-    curl \
-    nginx \
-    supervisor \
-    --no-install-recommends && \
-    rm -rf /var/lib/apt/lists/*
-
-# 设置环境变量
-ENV DRIVER_EXECUTABLE_PATH=/usr/bin/chromedriver
-ENV IN_DOCKER=true
-ENV TZ=Asia/Shanghai
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app
-
-# 设置时区
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
-# 自动检测Chrome版本
-RUN CHROME_MAJOR_VERSION=$(chromium --version | grep -oP 'Chromium \K\d+') && \
-    export CHROME_VERSION=${CHROME_MAJOR_VERSION}
 
 # 设置工作目录
 WORKDIR /app
 
-# 复制并安装 Python 依赖
-COPY backend/requirements.txt ./backend/
-RUN pip install --no-cache-dir -r backend/requirements.txt
+# 设置环境变量
+ENV PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    CHROME_BIN=/usr/bin/google-chrome \
+    CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
 
-# 复制项目文件 - 注意顺序和结构
-COPY backend/ ./backend/
-COPY core/ ./core/
-COPY scheduler/ ./scheduler/
-COPY presets/ ./presets/
+# 安装系统依赖和 Chrome
+RUN apt-get update && apt-get install -y \
+    # 基础工具
+    wget \
+    curl \
+    gnupg \
+    unzip \
+    supervisor \
+    nginx \
+    sqlite3 \
+    # Chrome 依赖
+    fonts-liberation \
+    libappindicator3-1 \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libgdk-pixbuf2.0-0 \
+    libnspr4 \
+    libnss3 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    xdg-utils \
+    libgbm1 \
+    libxss1 \
+    libxtst6 \
+    ca-certificates \
+    # 中文字体支持
+    fonts-wqy-zenhei \
+    fonts-wqy-microhei \
+    && rm -rf /var/lib/apt/lists/*
 
-# 创建 __init__.py 文件确保模块可导入
-RUN touch /app/__init__.py && \
-    touch /app/backend/__init__.py && \
-    touch /app/core/__init__.py && \
-    touch /app/scheduler/__init__.py
+# 安装 Google Chrome
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable \
+    && rm -rf /var/lib/apt/lists/*
 
-# 从构建阶段复制前端构建产物
-COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
+# 安装 ChromeDriver（版本匹配）
+RUN CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d '.' -f 1) \
+    && CHROMEDRIVER_VERSION=$(curl -sS "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION}") \
+    && echo "Chrome version: ${CHROME_VERSION}, ChromeDriver version: ${CHROMEDRIVER_VERSION}" \
+    && wget -q -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip" \
+    && unzip /tmp/chromedriver.zip -d /usr/local/bin/ \
+    && rm /tmp/chromedriver.zip \
+    && chmod +x /usr/local/bin/chromedriver
+
+# 复制项目文件
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# 创建必要的目录
+RUN mkdir -p /app/data /app/logs /app/frontend/dist
 
 # 复制配置文件
 COPY deploy/nginx.conf /etc/nginx/sites-available/default
 COPY deploy/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY deploy/entrypoint.sh /entrypoint.sh
 
-RUN chmod +x /entrypoint.sh
-
-# 创建必要的目录
-RUN mkdir -p /app/data /app/logs /var/log/supervisor
-
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:80/api/health || exit 1
+# 设置权限
+RUN chmod +x /app/deploy/entrypoint.sh
 
 # 暴露端口
 EXPOSE 80
 
-# 启动入口
-ENTRYPOINT ["/entrypoint.sh"]
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost/api/health || exit 1
+
+# 启动脚本
+ENTRYPOINT ["/app/deploy/entrypoint.sh"]
