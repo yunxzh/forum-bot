@@ -2,13 +2,15 @@
 Flask 主应用
 """
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, g
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 
-# 导入 API 蓝图
 from backend.api import auth, sites, tasks, ai_config, notifications
 from backend.database.db import init_db
+
+# 全局数据库路径
+DB_PATH = os.getenv('DATABASE_PATH', '/app/data/forum_bot.db')
 
 def create_app():
     """创建 Flask 应用"""
@@ -30,6 +32,18 @@ def create_app():
     
     # JWT 初始化
     jwt = JWTManager(app)
+    
+    # ⭐⭐⭐ 关键修复：在每个请求前确保数据库已初始化 ⭐⭐⭐
+    @app.before_request
+    def ensure_db_initialized():
+        """确保数据库在每个请求前都已初始化"""
+        try:
+            # 每次请求都调用 init_db 来设置全局 _db_path
+            # 如果数据库已存在，init_db 会跳过创建表的操作
+            init_db(DB_PATH)
+        except Exception:
+            # 忽略任何异常，因为数据库可能已经初始化
+            pass
     
     # 注册 API 蓝图
     app.register_blueprint(auth.bp, url_prefix='/api/auth')
@@ -66,21 +80,21 @@ def create_app():
 # 创建应用实例
 app = create_app()
 
-# ⭐⭐⭐ 关键修复：在应用启动时初始化数据库 ⭐⭐⭐
-db_path = os.getenv('DATABASE_PATH', '/app/data/forum_bot.db')
-
-print(f"正在初始化数据库: {db_path}")
+# ⭐⭐⭐ 在应用启动时初始化数据库 ⭐⭐⭐
+print(f"正在初始化数据库: {DB_PATH}")
 
 try:
     # 检查数据库文件是否存在
-    if os.path.exists(db_path):
-        print(f"✅ 数据库文件已存在: {db_path}")
+    if os.path.exists(DB_PATH):
+        print(f"✅ 数据库文件已存在: {DB_PATH}")
     else:
-        print(f"📝 创建新数据库: {db_path}")
+        print(f"📝 创建新数据库: {DB_PATH}")
+        # 确保数据目录存在
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     
-    # 初始化数据库（设置全局 _db_path 变量）
-    init_db(db_path)
-    print(f"✅ 数据库初始化成功: {db_path}")
+    # 初始化数据库（设置全局 _db_path 变量并创建表）
+    init_db(DB_PATH)
+    print(f"✅ 数据库初始化成功: {DB_PATH}")
     
 except Exception as e:
     print(f"❌ 数据库初始化失败: {e}")
@@ -95,6 +109,7 @@ if __name__ == '__main__':
     print(f"启动 Flask 应用...")
     print(f"  - 端口: {port}")
     print(f"  - Debug: {debug}")
+    print(f"  - 数据库: {DB_PATH}")
     
     app.run(
         host='0.0.0.0',
