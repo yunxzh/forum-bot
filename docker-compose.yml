@@ -12,6 +12,7 @@ services:
       - ./data:/app/data
       - ./logs:/app/logs
     environment:
+      - TZ=Asia/Shanghai
       # 数据库路径
       - DATABASE_PATH=/app/data/forum_bot.db
       
