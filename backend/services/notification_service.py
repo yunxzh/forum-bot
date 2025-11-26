@@ -28,6 +28,7 @@ class NotificationService:
         if not self._config_loaded:
             self.config = self._load_config()
             self._config_loaded = True
+            logger.info(f'通知配置已加载: {self.config}')
     
     def _load_config(self) -> NotificationConfig:
         """加载通知配置"""
@@ -38,9 +39,12 @@ class NotificationService:
                 row = cursor.fetchone()
                 
                 if not row:
+                    logger.warning('未找到通知配置，使用默认配置')
                     return NotificationConfig()
                 
                 config_json = json.loads(row['config_json'])
+                logger.info(f'从数据库加载的配置: {config_json}')
+                
                 return NotificationConfig.from_dict(config_json)
         except Exception as e:
             logger.warning(f"加载通知配置失败: {e}，使用默认配置")
@@ -57,27 +61,35 @@ class NotificationService:
         results = {}
         
         if self.config.tg_enabled:
+            logger.info('Telegram 已启用，尝试发送')
             results['telegram'] = self._send_telegram(title, content)
         
         if self.config.wecom_enabled:
+            logger.info('企业微信已启用，尝试发送')
             results['wecom'] = self._send_wecom(title, content)
         
         if self.config.pushplus_enabled:
+            logger.info('PushPlus 已启用，尝试发送')
             results['pushplus'] = self._send_pushplus(title, content)
         
         if self.config.dingding_enabled:
+            logger.info('钉钉已启用，尝试发送')
             results['dingding'] = self._send_dingding(title, content)
         
         if self.config.feishu_enabled:
+            logger.info('飞书已启用，尝试发送')
             results['feishu'] = self._send_feishu(title, content)
         
         if self.config.bark_enabled:
+            logger.info('Bark 已启用，尝试发送')
             results['bark'] = self._send_bark(title, content)
         
         if self.config.smtp_enabled:
+            logger.info('SMTP 已启用，尝试发送')
             results['smtp'] = self._send_smtp(title, content)
         
         if self.config.gotify_enabled:
+            logger.info('Gotify 已启用，尝试发送')
             results['gotify'] = self._send_gotify(title, content)
         
         return results
@@ -85,6 +97,7 @@ class NotificationService:
     def _send_telegram(self, title: str, content: str) -> bool:
         """发送Telegram通知"""
         if not self.config.tg_bot_token or not self.config.tg_user_id:
+            logger.warning('Telegram 配置不完整')
             return False
         
         try:
@@ -92,7 +105,8 @@ class NotificationService:
             
             payload = {
                 'chat_id': self.config.tg_user_id,
-                'text': f"{title}\n\n{content}",
+                'text': f"*{title}*\n\n{content}",
+                'parse_mode': 'Markdown',
                 'disable_web_page_preview': True
             }
             
@@ -105,9 +119,16 @@ class NotificationService:
                 proxies = {'http': proxy_url, 'https': proxy_url}
             
             response = requests.post(url, json=payload, proxies=proxies, timeout=15)
-            return response.status_code == 200
+            success = response.status_code == 200
+            
+            if success:
+                logger.info('Telegram 通知发送成功')
+            else:
+                logger.error(f'Telegram 通知发送失败: {response.text}')
+            
+            return success
         except Exception as e:
-            logger.error(f"Telegram通知发送失败: {e}")
+            logger.error(f"Telegram通知发送失败: {e}", exc_info=True)
             return False
     
     def _send_wecom(self, title: str, content: str) -> bool:
@@ -130,6 +151,7 @@ class NotificationService:
     def _send_pushplus(self, title: str, content: str) -> bool:
         """发送PushPlus通知"""
         if not self.config.pushplus_token:
+            logger.warning('PushPlus Token 未配置')
             return False
         
         try:
@@ -138,12 +160,25 @@ class NotificationService:
                 'token': self.config.pushplus_token,
                 'title': title,
                 'content': content,
-                'topic': self.config.pushplus_user
+                'template': 'html'
             }
+            
+            if self.config.pushplus_user:
+                data['topic'] = self.config.pushplus_user
+            
+            logger.info(f'发送 PushPlus 通知到: {url}')
             response = requests.post(url, json=data, timeout=15)
-            return response.json().get('code') == 200
+            result = response.json()
+            success = result.get('code') == 200
+            
+            if success:
+                logger.info('PushPlus 通知发送成功')
+            else:
+                logger.error(f'PushPlus 通知发送失败: {result}')
+            
+            return success
         except Exception as e:
-            logger.error(f"PushPlus通知发送失败: {e}")
+            logger.error(f"PushPlus通知发送失败: {e}", exc_info=True)
             return False
     
     def _send_dingding(self, title: str, content: str) -> bool:
@@ -265,7 +300,7 @@ class NotificationService:
         if not self.config:
             return False
         
-        return any([
+        enabled = any([
             self.config.tg_enabled,
             self.config.wecom_enabled,
             self.config.pushplus_enabled,
@@ -275,3 +310,8 @@ class NotificationService:
             self.config.smtp_enabled,
             self.config.gotify_enabled
         ])
+        
+        logger.info(f'是否有启用的通知渠道: {enabled}')
+        logger.info(f'配置详情 - TG: {self.config.tg_enabled}, PushPlus: {self.config.pushplus_enabled}')
+        
+        return enabled
