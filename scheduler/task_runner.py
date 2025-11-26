@@ -6,13 +6,14 @@ import time
 from typing import Dict, Any
 import logging
 
-from models.site import Site
+# 修复导入路径
+from backend.models.site import Site
 from core.executors.signin_executor import SignInExecutor
 from core.executors.reply_executor import ReplyExecutor
 from core.ai.reply_generator import ReplyGenerator
-from services.task_service import TaskService
-from services.notification_service import NotificationService
-from database.db import get_db
+from backend.services.task_service import TaskService
+from backend.services.notification_service import NotificationService
+from backend.database.db import get_db
 
 logger = logging.getLogger(__name__)
 
