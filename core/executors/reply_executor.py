@@ -43,9 +43,7 @@ class ReplyExecutor:
                 proxy=self.site.http_proxy
             )
             
-            # 删除 self.browser.start()
-            
-            # 导航到站点 (修正为 navigate_to)
+            # 导航到站点
             self.browser.navigate_to(self.site.base_url)
             time.sleep(2)
             
