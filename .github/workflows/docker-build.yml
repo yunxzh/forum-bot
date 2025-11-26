@@ -5,12 +5,14 @@ on:
     branches:
       - master
       - main
+      - aio
     tags:
       - 'v*'  # 当推送如 v1.0.0 的标签时触发
   pull_request:
     branches:
       - master
       - main
+      - aio
   # 允许手动触发
   workflow_dispatch:
 
