@@ -4,6 +4,7 @@
 from typing import Dict, Tuple
 import time
 import logging
+from selenium.webdriver.common.by import By
 
 # 修复导入路径
 from core.browser.browser_manager import BrowserManager
@@ -32,9 +33,7 @@ class SignInExecutor:
                 proxy=self.site.http_proxy
             )
             
-            # 删除 self.browser.start()，因为 undetected-chromedriver 初始化时已启动
-            
-            # 导航到站点 (修正方法名为 navigate_to)
+            # 导航到站点
             self.browser.navigate_to(self.site.base_url)
             time.sleep(2)
             
@@ -59,9 +58,6 @@ class SignInExecutor:
                 return False, "未配置签到按钮选择器", details
             
             # 查找签到按钮
-            # 注意：如果 BrowserManager 没有 find_element 方法，请使用 self.browser.driver.find_element(...)
-            # 这里假设 BrowserManager 已封装或使用 driver 的 wait_for_element
-            from selenium.webdriver.common.by import By
             signin_button = self.browser.wait_for_element(By.CSS_SELECTOR, signin_selector)
             
             if not signin_button:
@@ -147,8 +143,6 @@ class SignInExecutor:
                 if ele: ele.click()
                 time.sleep(3)
             
-            # 检查是否登录成功（可以根据页面变化判断）
-            # 这里简单返回True，实际应该检查登录状态
             logger.info("账号密码登录完成")
             return True
             
