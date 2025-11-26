@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   forum-bot:
-    image: ghcr.io/yourusername/forum-bot:latest
+    image: ghcr.io/yunxzh/forum-bot:aio
     # 或使用: yourusername/forum-bot:latest
     container_name: forum-bot
     restart: unless-stopped
