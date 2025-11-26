@@ -5,6 +5,7 @@ from typing import Dict, Tuple, List, Optional
 import time
 import random
 import logging
+from selenium.webdriver.common.by import By
 
 # 修复导入路径
 from core.browser.browser_manager import BrowserManager
@@ -42,10 +43,10 @@ class ReplyExecutor:
                 proxy=self.site.http_proxy
             )
             
-            self.browser.start()
+            # 删除 self.browser.start()
             
-            # 导航到站点
-            self.browser.navigate(self.site.base_url)
+            # 导航到站点 (修正为 navigate_to)
+            self.browser.navigate_to(self.site.base_url)
             time.sleep(2)
             
             # 登录
@@ -122,20 +123,24 @@ class ReplyExecutor:
         try:
             login_modal_selector = self.site.selectors.get('login_modal')
             if login_modal_selector:
-                self.browser.click(login_modal_selector)
+                ele = self.browser.wait_for_element(By.CSS_SELECTOR, login_modal_selector)
+                if ele: ele.click()
                 time.sleep(1)
             
             username_selector = self.site.selectors.get('username_input')
             if username_selector:
-                self.browser.input_text(username_selector, self.site.username)
+                ele = self.browser.wait_for_element(By.CSS_SELECTOR, username_selector)
+                if ele: ele.send_keys(self.site.username)
             
             password_selector = self.site.selectors.get('password_input')
             if password_selector:
-                self.browser.input_text(password_selector, self.site.password)
+                ele = self.browser.wait_for_element(By.CSS_SELECTOR, password_selector)
+                if ele: ele.send_keys(self.site.password)
             
             login_submit_selector = self.site.selectors.get('login_submit')
             if login_submit_selector:
-                self.browser.click(login_submit_selector)
+                ele = self.browser.wait_for_element(By.CSS_SELECTOR, login_submit_selector)
+                if ele: ele.click()
                 time.sleep(3)
             
             return True
@@ -151,7 +156,7 @@ class ReplyExecutor:
             if not post_list_url.startswith('http'):
                 post_list_url = self.site.base_url.rstrip('/') + '/' + post_list_url.lstrip('/')
             
-            self.browser.navigate(post_list_url)
+            self.browser.navigate_to(post_list_url)
             time.sleep(3)
             
             # 获取页面HTML
@@ -173,7 +178,7 @@ class ReplyExecutor:
             logger.info(f"准备回复帖子: {post['title']}")
             
             # 导航到帖子详情页
-            self.browser.navigate(post['link'])
+            self.browser.navigate_to(post['link'])
             time.sleep(2)
             
             # 获取帖子内容
@@ -215,8 +220,10 @@ class ReplyExecutor:
             # 点击回复按钮（如果需要）
             reply_dropdown_selector = self.site.selectors.get('reply_dropdown')
             if reply_dropdown_selector:
-                self.browser.click(reply_dropdown_selector)
-                time.sleep(1)
+                ele = self.browser.wait_for_element(By.CSS_SELECTOR, reply_dropdown_selector)
+                if ele: 
+                    ele.click()
+                    time.sleep(1)
             
             # 输入回复内容
             textarea_selector = self.site.selectors.get('reply_textarea')
@@ -224,8 +231,12 @@ class ReplyExecutor:
                 logger.error("未配置回复输入框选择器")
                 return False
             
-            self.browser.input_text(textarea_selector, content)
-            time.sleep(1)
+            ele = self.browser.wait_for_element(By.CSS_SELECTOR, textarea_selector)
+            if ele:
+                ele.send_keys(content)
+                time.sleep(1)
+            else:
+                return False
             
             # 点击提交按钮
             submit_selector = self.site.selectors.get('reply_submit')
@@ -233,8 +244,12 @@ class ReplyExecutor:
                 logger.error("未配置提交按钮选择器")
                 return False
             
-            self.browser.click(submit_selector)
-            time.sleep(2)
+            ele = self.browser.wait_for_element(By.CSS_SELECTOR, submit_selector)
+            if ele:
+                ele.click()
+                time.sleep(2)
+            else:
+                return False
             
             logger.info(f"回复已发送: {content}")
             return True
