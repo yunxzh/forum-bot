@@ -178,6 +178,7 @@ const loadLogs = async () => {
     pagination.total = response.total || 0
   } catch (error) {
     console.error('加载日志失败:', error)
+    ElMessage.error('加载日志列表失败')
   } finally {
     loading.value = false
   }
@@ -203,18 +204,28 @@ const clearOldLogs = () => {
   ElMessageBox.prompt('请输入要清理多少天前的日志', '清理旧日志', {
     inputValue: '30',
     inputPattern: /^\d+$/,
-    inputErrorMessage: '请输入有效的天数'
+    inputErrorMessage: '请输入有效的天数',
+    confirmButtonText: '确定',
+    cancelButtonText: '取消'
   }).then(async ({ value }) => {
     try {
-      await request.delete('/tasks/logs', {
-        params: { days: parseInt(value) }
-      })
-      ElMessage.success('清理成功')
+      // 修正：直接拼接 URL 参数，确保后端能正确解析
+      const days = parseInt(value)
+      await request.delete(`/tasks/logs?days=${days}`)
+      
+      ElMessage.success(`成功清理 ${days} 天前的日志`)
+      
+      // 清理后重置到第一页并刷新
+      pagination.page = 1
       loadLogs()
+      
     } catch (error) {
       console.error('清理日志失败:', error)
+      ElMessage.error('清理日志失败')
     }
-  }).catch(() => {})
+  }).catch(() => {
+    // 用户取消操作
+  })
 }
 
 const formatTime = (time) => {
@@ -243,5 +254,7 @@ pre {
   border-radius: 4px;
   max-height: 300px;
   overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 </style>
