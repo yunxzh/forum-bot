@@ -39,7 +39,29 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.
 COPY . .
 
 # ==================== 创建必要目录 ====================
-RUN mkdir -p /app/data /app/logs /app/frontend/dist
+RUN mkdir -p /app/data /app/logs
+
+# ==================== ⭐ 构建前端（新增）====================
+# 如果您已经有构建好的 dist 目录，跳过这一步
+# 如果需要在 Docker 中构建前端，取消下面的注释：
+
+# FROM node:18-alpine AS frontend-builder
+# WORKDIR /app/frontend
+# COPY frontend/package*.json ./
+# RUN npm install
+# COPY frontend/ ./
+# RUN npm run build
+
+# 然后在主 FROM 后添加：
+# COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
+
+# ==================== ⭐ 复制预构建的前端（如果已有）====================
+# 如果您的仓库中已经有 frontend/dist 目录：
+# COPY frontend/dist /app/frontend/dist
+
+# ==================== 临时方案：创建简单的 index.html ====================
+RUN mkdir -p /app/frontend/dist && \
+    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Forum-Bot</title></head><body><h1>Forum-Bot 正在运行</h1><p>前端正在部署中...</p><p>API 端点：<a href="/api/health">/api/health</a></p></body></html>' > /app/frontend/dist/index.html
 
 # ==================== 复制配置文件 ====================
 COPY deploy/nginx.conf /etc/nginx/sites-available/default
