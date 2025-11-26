@@ -9,7 +9,7 @@ on:
       - 'v*'
   pull_request:
     branches:
-      - aio
+      - v1.0.1
       - master
   workflow_dispatch:
 
