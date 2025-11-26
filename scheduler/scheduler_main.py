@@ -2,18 +2,19 @@
 调度器主程序
 使用APScheduler进行任务调度
 """
+import sys
+import os
+
+# 添加项目根目录到 Python 路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
 import logging
-import sys
-import os
 
-# 添加项目根目录到路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from database.db import init_db, get_db
-from services.site_service import SiteService
+from backend.database.db import init_db, get_db
+from backend.services.site_service import SiteService
 from scheduler.task_runner import TaskRunner
 
 # 配置日志
