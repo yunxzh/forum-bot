@@ -6,8 +6,9 @@ from flask_jwt_extended import jwt_required
 from datetime import datetime
 import json
 
-from database.db import get_db
-from models.notification import NotificationConfig
+# 修复导入路径
+from backend.database.db import get_db
+from backend.models.notification import NotificationConfig
 
 bp = Blueprint('notifications', __name__)
 
