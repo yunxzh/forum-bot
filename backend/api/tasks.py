@@ -6,8 +6,9 @@ from flask_jwt_extended import jwt_required
 from datetime import datetime, timedelta
 import json
 
-from database.db import get_db
-from models.task import TaskLog
+# 修复导入路径
+from backend.database.db import get_db
+from backend.models.task import TaskLog
 
 bp = Blueprint('tasks', __name__)
 
