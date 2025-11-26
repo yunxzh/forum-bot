@@ -3,7 +3,7 @@ name: Build and Push Docker Images
 on:
   push:
     branches:
-      - aio
+      - v1.0.1
       - master
     tags:
       - 'v*'
