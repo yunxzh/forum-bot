@@ -8,8 +8,9 @@ import json
 import os
 from pathlib import Path
 
-from database.db import get_db
-from models.site import Site
+# 修复导入路径
+from backend.database.db import get_db
+from backend.models.site import Site
 
 bp = Blueprint('sites', __name__)
 
