@@ -231,3 +231,55 @@ def test_site_connection(site_id):
     """测试站点连接"""
     # TODO: 实现站点连接测试逻辑
     return jsonify({'message': '连接测试功能开发中'}), 501
+
+@bp.route('/<int:site_id>/run', methods=['POST'])
+@jwt_required()
+def run_site_task(site_id):
+    """立即执行站点任务"""
+    try:
+        import sys
+        import os
+        
+        # 确保路径
+        sys.path.insert(0, '/app')
+        
+        from backend.services.site_service import SiteService
+        from scheduler.task_runner import TaskRunner
+        
+        # 获取站点信息
+        site = SiteService.get_site_by_id(site_id)
+        
+        if not site:
+            return jsonify({'error': '站点不存在'}), 404
+        
+        if not site.is_active:
+            return jsonify({'error': '站点未启用'}), 400
+        
+        # 创建任务运行器
+        task_runner = TaskRunner()
+        
+        # 执行任务（在后台线程中）
+        import threading
+        
+        def run_task():
+            try:
+                result = task_runner.run_site_tasks(site)
+                logger.info(f'站点任务执行完成: {site.name}')
+            except Exception as e:
+                logger.error(f'站点任务执行失败: {e}', exc_info=True)
+        
+        # 启动后台线程
+        thread = threading.Thread(target=run_task)
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            'message': f'站点 {site.name} 的任务已开始执行',
+            'site_id': site_id
+        })
+        
+    except Exception as e:
+        logger.error(f'启动站点任务失败: {e}', exc_info=True)
+        return jsonify({'error': f'启动任务失败: {str(e)}'}), 500
+
+
