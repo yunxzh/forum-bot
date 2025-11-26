@@ -1,0 +1,23 @@
+{
+  "name": "LinuxDo",
+  "base_url": "https://linux.do",
+  "architecture": "Discourse",
+  "description": "LinuxDo论坛预设配置",
+  "selectors": {
+    "signin_button": ".header-buttons .login-button",
+    "signin_confirm": null,
+    "post_list_url": "/latest",
+    "post_item": ".topic-list-item",
+    "post_title": ".topic-title",
+    "post_link": ".topic-title a",
+    "detail_title": ".fancy-title",
+    "detail_content": ".cooked",
+    "reply_dropdown": ".reply-button",
+    "reply_textarea": ".d-editor-input",
+    "reply_submit": ".save-or-cancel .create",
+    "login_modal": "#login-modal",
+    "login_submit": "#login-button",
+    "username_input": "#login-account-name",
+    "password_input": "#login-account-password"
+  }
+}
