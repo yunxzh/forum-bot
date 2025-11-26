@@ -1,3 +1,19 @@
+# ==================== 第一阶段：构建前端 ====================
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /app/frontend
+
+# 复制依赖文件并安装
+COPY frontend/package*.json ./
+# 使用 npm ci 安装更稳定，或者用 install
+RUN npm install
+
+# 复制源代码并构建
+COPY frontend/ ./
+RUN npm run build
+
+
+# ==================== 第二阶段：构建运行环境 ====================
 FROM --platform=linux/amd64 python:3.9-slim
 
 WORKDIR /app
@@ -35,33 +51,15 @@ RUN google-chrome --version
 COPY backend/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
-# ==================== 复制项目文件 ====================
+# ==================== 复制项目后端文件 ====================
 COPY . .
 
 # ==================== 创建必要目录 ====================
-RUN mkdir -p /app/data /app/logs
+RUN mkdir -p /app/data /app/logs /app/frontend/dist
 
-# ==================== ⭐ 构建前端（新增）====================
-# 如果您已经有构建好的 dist 目录，跳过这一步
-# 如果需要在 Docker 中构建前端，取消下面的注释：
-
-# FROM node:18-alpine AS frontend-builder
-# WORKDIR /app/frontend
-# COPY frontend/package*.json ./
-# RUN npm install
-# COPY frontend/ ./
-# RUN npm run build
-
-# 然后在主 FROM 后添加：
-# COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
-
-# ==================== ⭐ 复制预构建的前端（如果已有）====================
-# 如果您的仓库中已经有 frontend/dist 目录：
-# COPY frontend/dist /app/frontend/dist
-
-# ==================== 临时方案：创建简单的 index.html ====================
-RUN mkdir -p /app/frontend/dist && \
-    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Forum-Bot</title></head><body><h1>Forum-Bot 正在运行</h1><p>前端正在部署中...</p><p>API 端点：<a href="/api/health">/api/health</a></p></body></html>' > /app/frontend/dist/index.html
+# ==================== ⭐ 复制构建好的前端文件 ====================
+# 从第一阶段复制 dist 目录到最终镜像
+COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 
 # ==================== 复制配置文件 ====================
 COPY deploy/nginx.conf /etc/nginx/sites-available/default
