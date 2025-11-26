@@ -6,12 +6,13 @@ import time
 import random
 import logging
 
+# 修复导入路径
 from core.browser.browser_manager import BrowserManager
 from core.browser.cookie_manager import CookieManager
 from core.ai.reply_generator import ReplyGenerator
 from core.ai.content_analyzer import ContentAnalyzer
 from core.parsers.post_parser import PostParser
-from models.site import Site
+from backend.models.site import Site
 
 logger = logging.getLogger(__name__)
 
