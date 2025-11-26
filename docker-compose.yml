@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: ghcr.io/yourusername/forum-bot-backend:latest
+    image: ghcr.io/yunxzh/forum-bot-backend:latest
     # 或使用 Docker Hub: yourusername/forum-bot-backend:latest
     container_name: forum-bot-backend
     restart: unless-stopped
@@ -20,7 +20,7 @@ services:
       - forum-bot-network
 
   frontend:
-    image: ghcr.io/yourusername/forum-bot-frontend:latest
+    image: ghcr.io/yunxzh/forum-bot-frontend:latest
     # 或使用 Docker Hub: yourusername/forum-bot-frontend:latest
     container_name: forum-bot-frontend
     restart: unless-stopped
@@ -32,7 +32,7 @@ services:
       - forum-bot-network
 
   scheduler:
-    image: ghcr.io/yourusername/forum-bot-backend:latest
+    image: ghcr.io/yunxzh/forum-bot-backend:latest
     # 或使用 Docker Hub: yourusername/forum-bot-backend:latest
     container_name: forum-bot-scheduler
     restart: unless-stopped
