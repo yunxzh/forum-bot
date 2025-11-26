@@ -4,8 +4,9 @@
 from typing import Optional, Tuple
 from datetime import datetime
 
-from database.db import get_db
-from models.user import User
+# 修复导入路径 - 使用绝对导入
+from backend.database.db import get_db
+from backend.models.user import User
 
 class AuthService:
     @staticmethod
