@@ -5,16 +5,10 @@ FROM node:18-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
-# 复制前端依赖文件
 COPY frontend/package*.json ./
-
-# 安装依赖
 RUN npm install
 
-# 复制前端源码
 COPY frontend/ ./
-
-# 构建前端
 RUN npm run build
 
 # ============================================
@@ -37,6 +31,7 @@ ENV DRIVER_EXECUTABLE_PATH=/usr/bin/chromedriver
 ENV IN_DOCKER=true
 ENV TZ=Asia/Shanghai
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 
 # 设置时区
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
@@ -52,23 +47,26 @@ WORKDIR /app
 COPY backend/requirements.txt ./backend/
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
-# 复制项目文件
+# 复制项目文件 - 注意顺序和结构
 COPY backend/ ./backend/
 COPY core/ ./core/
 COPY scheduler/ ./scheduler/
 COPY presets/ ./presets/
 
+# 创建 __init__.py 文件确保模块可导入
+RUN touch /app/__init__.py && \
+    touch /app/backend/__init__.py && \
+    touch /app/core/__init__.py && \
+    touch /app/scheduler/__init__.py
+
 # 从构建阶段复制前端构建产物
 COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
 
-# 复制 Nginx 配置
+# 复制配置文件
 COPY deploy/nginx.conf /etc/nginx/sites-available/default
-
-# 复制 Supervisor 配置
 COPY deploy/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-# 复制启动脚本
 COPY deploy/entrypoint.sh /entrypoint.sh
+
 RUN chmod +x /entrypoint.sh
 
 # 创建必要的目录
@@ -78,7 +76,7 @@ RUN mkdir -p /app/data /app/logs /var/log/supervisor
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:80/api/health || exit 1
 
-# 暴露端口（只需要一个端口）
+# 暴露端口
 EXPOSE 80
 
 # 启动入口
