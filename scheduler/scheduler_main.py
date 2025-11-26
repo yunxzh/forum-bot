@@ -1,0 +1,201 @@
+"""
+调度器主程序
+使用APScheduler进行任务调度
+"""
+from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.cron import CronTrigger
+from datetime import datetime
+import logging
+import sys
+import os
+
+# 添加项目根目录到路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from database.db import init_db, get_db
+from services.site_service import SiteService
+from scheduler.task_runner import TaskRunner
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('logs/scheduler.log', encoding='utf-8')
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+class ForumBotScheduler:
+    def __init__(self):
+        self.scheduler = BlockingScheduler()
+        self.task_runner = TaskRunner()
+        self.jobs = {}
+    
+    def initialize(self):
+        """初始化调度器"""
+        logger.info("初始化Forum-Bot调度器...")
+        
+        # 初始化数据库
+        db_path = os.getenv('DATABASE_PATH', 'data/forum_bot.db')
+        init_db(db_path)
+        
+        # 加载所有站点的定时任务
+        self.load_site_jobs()
+        
+        logger.info("调度器初始化完成")
+    
+    def load_site_jobs(self):
+        """加载所有站点的定时任务"""
+        sites = SiteService.get_all_active_sites()
+        
+        logger.info(f"发现 {len(sites)} 个活跃站点")
+        
+        for site in sites:
+            self.add_site_job(site)
+        
+        logger.info(f"已加载 {len(self.jobs)} 个定时任务")
+    
+    def add_site_job(self, site):
+        """添加站点任务"""
+        try:
+            job_id = f"site_{site.id}"
+            
+            # 解析Cron表达式
+            cron_parts = site.cron_expression.split()
+            
+            if len(cron_parts) != 5:
+                logger.error(f"站点 {site.name} 的Cron表达式格式错误: {site.cron_expression}")
+                return
+            
+            minute, hour, day, month, day_of_week = cron_parts
+            
+            # 创建Cron触发器
+            trigger = CronTrigger(
+                minute=minute,
+                hour=hour,
+                day=day,
+                month=month,
+                day_of_week=day_of_week
+            )
+            
+            # 添加任务
+            job = self.scheduler.add_job(
+                func=self.execute_site_task,
+                trigger=trigger,
+                args=[site.id],
+                id=job_id,
+                name=f"{site.name} 定时任务",
+                replace_existing=True
+            )
+            
+            self.jobs[site.id] = job
+            
+            logger.info(f"已添加定时任务: {site.name} ({site.cron_expression})")
+            
+        except Exception as e:
+            logger.error(f"添加站点任务失败 {site.name}: {e}")
+    
+    def execute_site_task(self, site_id: int):
+        """执行站点任务"""
+        logger.info(f"开始执行定时任务: site_id={site_id}")
+        
+        try:
+            # 获取站点信息
+            site = SiteService.get_site_by_id(site_id)
+            
+            if not site:
+                logger.error(f"站点不存在: {site_id}")
+                return
+            
+            if not site.is_active:
+                logger.info(f"站点已禁用，跳过执行: {site.name}")
+                return
+            
+            # 执行任务
+            result = self.task_runner.run_site_tasks(site)
+            
+            # 发送通知
+            self.task_runner.send_task_report([result])
+            
+            logger.info(f"定时任务执行完成: {site.name}")
+            
+        except Exception as e:
+            logger.error(f"执行定时任务失败: {e}", exc_info=True)
+    
+    def execute_all_sites(self):
+        """立即执行所有站点任务（用于测试）"""
+        logger.info("开始执行所有站点任务...")
+        
+        sites = SiteService.get_all_active_sites()
+        results = []
+        
+        for site in sites:
+            result = self.task_runner.run_site_tasks(site)
+            results.append(result)
+        
+        # 发送汇总报告
+        self.task_runner.send_task_report(results)
+        
+        logger.info("所有站点任务执行完成")
+    
+    def start(self):
+        """启动调度器"""
+        logger.info("启动Forum-Bot调度器...")
+        logger.info(f"当前已加载 {len(self.jobs)} 个定时任务")
+        
+        # 显示所有任务
+        for job in self.scheduler.get_jobs():
+            logger.info(f"  - {job.name}: {job.trigger}")
+        
+        try:
+            self.scheduler.start()
+        except (KeyboardInterrupt, SystemExit):
+            logger.info("调度器已停止")
+    
+    def reload_jobs(self):
+        """重新加载所有任务（用于配置更新后）"""
+        logger.info("重新加载定时任务...")
+        
+        # 移除所有现有任务
+        for job_id in list(self.jobs.keys()):
+            self.scheduler.remove_job(job_id)
+            del self.jobs[job_id]
+        
+        # 重新加载
+        self.load_site_jobs()
+        
+        logger.info("任务重新加载完成")
+
+def main():
+    """主函数"""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Forum-Bot 任务调度器')
+    parser.add_argument('--run-once', action='store_true', help='立即执行一次所有任务后退出')
+    parser.add_argument('--site-id', type=int, help='只执行指定站点的任务')
+    
+    args = parser.parse_args()
+    
+    scheduler = ForumBotScheduler()
+    scheduler.initialize()
+    
+    if args.run_once:
+        # 单次运行模式
+        if args.site_id:
+            site = SiteService.get_site_by_id(args.site_id)
+            if site:
+                result = scheduler.task_runner.run_site_tasks(site)
+                scheduler.task_runner.send_task_report([result])
+            else:
+                logger.error(f"站点不存在: {args.site_id}")
+        else:
+            scheduler.execute_all_sites()
+    else:
+        # 调度模式
+        scheduler.start()
+
+if __name__ == '__main__':
+    main()
